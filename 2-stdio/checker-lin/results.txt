@@ -1,0 +1,7 @@
+./so_stdio.c:68: WARNING:BRACES: braces {} are not necessary for single statement blocks
+./so_stdio.c:57: WARNING:LINE_SPACING: Missing a blank line after declarations
+./so_stdio.c:21: ERROR:OPEN_BRACE: open brace '{' following function definitions go on the next line
+./so_stdio.c:144: WARNING:SPACE_BEFORE_TAB: please, no space before tabs
+./so_stdio.c:67: ERROR:SPACING: space required before the open brace '{'
+00) Sources check...........................................failed  [ 0/95]
+01) Test fopen arguments....................................passed  [02/95]

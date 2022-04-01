@@ -33,7 +33,7 @@ In order to run a single test, you can manually run the `run_test.sh` script:
 ```
 _test/run_test.sh init
 _test/run_test.sh <test>
-_test/run_test.sh clean
+_test/run_test.sh <test>
 ```
 where <test> is an integer specifying the test number
 # Cleanup
