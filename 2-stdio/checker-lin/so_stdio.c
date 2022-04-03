@@ -13,10 +13,14 @@ struct _so_file
 	int bffIndex;
 	// 1 for write, 2 for read, 0 for idle
 	int lastOp;
+	int lastRead;
+	// 0 - r, 1 - r+, 2 - w, 3 - w+, 4 - a, 5 - a+
+	int mode;
 	int eof;
+	int cursorPos;
 	char *buffer;
 	char *path;
-	char *mode;
+	
 
 };
 
@@ -27,19 +31,34 @@ SO_FILE *so_fopen(const char *pathname, const char *mode) {
 	file->bffIndex = 0;
 	file->eof = 0;
 	file->lastOp = 0;
-
-	if (strcmp(mode, "r") == 0)
+	file->lastRead = BUFFERSIZE;
+	// file->mode = calloc(2 ,sizeof(char));
+	file->cursorPos = 0;
+	if (strcmp(mode, "r") == 0){
 		file->fd = open(pathname, O_RDONLY);
-	else if (strcmp(mode, "r+") == 0)
+		file->mode = 0;
+	}
+	else if (strcmp(mode, "r+") == 0){
 		file->fd = open(pathname, O_RDWR);
-	else if (strcmp(mode, "w") == 0)
+		file->mode = 1;
+	}
+	else if (strcmp(mode, "w") == 0){
 		file->fd = open(pathname, O_WRONLY|O_CREAT|O_TRUNC, 0644);
-	else if (strcmp(mode, "w+") == 0)
+		file->mode = 2;
+	}
+	else if (strcmp(mode, "w+") == 0){
 		file->fd = open(pathname, O_RDWR|O_TRUNC, 0644);
-	else if (strcmp(mode, "a") == 0)
+		file->mode = 3;
+	}
+	else if (strcmp(mode, "a") == 0){
 		file->fd = open(pathname, O_APPEND|O_CREAT, 0644);
-	else if (strcmp(mode, "a+") == 0)
+		file->mode = 4;
+		so_fseek(file, 0, SEEK_END);
+	}
+	else if (strcmp(mode, "a+") == 0){
 		file->fd = open(pathname, O_APPEND|O_RDONLY|O_CREAT, 0644);
+		file->mode = 5;
+	}
 	else {
 		free(file);
 		return NULL;
@@ -59,28 +78,33 @@ int so_fclose(SO_FILE *stream)
 		so_fflush(stream);
 	int rc = close(stream->fd);
 	free(stream->buffer);
+	// free(stream->mode);
 	free(stream);
 	if (rc < 0)
 		return SO_EOF;
 	return 0;
 }
 
-
+int abc = 0;
 
 
 int so_fgetc(SO_FILE *stream){
+	int r;
 	stream->lastOp = 2;
-	if (strlen(stream->buffer) > 0) {
-		if(stream->bffIndex < BUFFERSIZE)
-			return (unsigned char)stream->buffer[stream->bffIndex++];
-		stream->bffIndex = 0;
 
+	if((stream->bffIndex == 0 || stream->bffIndex == BUFFERSIZE) && stream->lastRead == BUFFERSIZE) {
+		r  = read(stream->fd ,stream->buffer, BUFFERSIZE);
+		stream->lastRead = r;
+		if (r <= 0) {
+			stream->eof = SO_EOF;
+			return SO_EOF;
+		}
+		stream->bffIndex = 0;
 	}
-	if (read(stream->fd ,stream->buffer, BUFFERSIZE)) {
-		return (unsigned char)stream->buffer[stream->bffIndex++];
-	}
-	stream->eof = SO_EOF;
-	return SO_EOF;
+	stream->cursorPos++;
+	int c = (unsigned char)stream->buffer[stream->bffIndex++];
+	return c;
+
 }
 
 size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
@@ -90,9 +114,9 @@ size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
 
 	for (int i = 0; i < nmemb*size; i++) {
 		c =  so_fgetc(stream);
-		if(so_feof(stream) != 0) {
-			printf("\nEOF\n");
-			return SO_EOF;
+		if(so_feof(stream)) {
+			stream->eof = SO_EOF;
+			return 0;
 		}
 		*(char*)ptr = c;
 		ptr++;
@@ -109,6 +133,7 @@ int so_fputc(int c, SO_FILE *stream)
 	}
 
 	if(stream->bffIndex < BUFFERSIZE) {
+		stream->cursorPos++;
 		stream->buffer[stream->bffIndex] = c;
 		stream->bffIndex++;
 		return c;
@@ -120,12 +145,11 @@ int so_fputc(int c, SO_FILE *stream)
 
 size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
 {
-	int c;
 	for(int i = 0; i < nmemb * size; i++) {
-		c = so_fputc(*(int *)ptr, stream);
+		so_fputc(*(int *)ptr, stream);
 		if(so_feof(stream)) {
 			stream->eof = SO_EOF;
-			return SO_EOF;
+			return 0;
 		}
 		ptr += 1;
 	}
@@ -156,11 +180,17 @@ int so_fflush(SO_FILE *stream)
 
 int so_fseek(SO_FILE *stream, long offset, int whence)
 {
+	so_fflush(stream);
+	int res = lseek(stream->fd, offset, whence);
+	if(res < 0) {
+		return -1;
+	}
+	stream->cursorPos = res;
 	return 0;
 }
 long so_ftell(SO_FILE *stream)
 {
-	return 0;
+	return stream->cursorPos;
 }
 
 
@@ -183,59 +213,9 @@ int so_ferror(SO_FILE *stream)
 SO_FILE *so_popen(const char *command, const char *type)
 {
 
-	SO_FILE *f;
-	f->fd = 0;
-	return f;
+	return NULL;
 }
 int so_pclose(SO_FILE *stream)
 {
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-// FUNC_DECL_PREFIX int so_fgetc(SO_FILE *stream)
-// {
-// 	char bf[1];
-// 	char res;
-
-// 	if (strlen(stream->buffer) > 0) {
-// 		res = stream->buffer[0];
-// 		stream->buffer[strlen(stream->buffer)-1] = '\0';
-// 		memmove(stream->buffer, stream->buffer+1, strlen(stream->buffer));
-// 		return res;
-// 	}
-// 	int c = read(stream->fd, bf, 1);
-
-// 	strcat(stream->buffer, bf);
-// 	if (c != 0) {
-// 		res = stream->buffer[0];
-// 		memmove(stream->buffer, stream->buffer+1, strlen(stream->buffer));
-// 		return res;
-// 	}
-// 	return SO_EOF;
-// }
-
-// size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
-// {
-//     char elem[size];
-// 	int numberOfElements;
-// 	int i, j;
-
-//     numberOfElements = 0;
-// 	for (i = 0; i < nmemb; i++) {
-// 		if (strlen(stream->buffer) > size) {
-// 			for (j = 0; j < size; j++) {
-// 				strcat(ptr, )
-// 			}
-// 		}
-// 	}
-// }
