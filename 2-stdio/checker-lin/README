@@ -1,0 +1,24 @@
+Nume: Porumb Andrei-Cornel
+Grupa: 336CA
+Tema 2 SO
+
+Organizare:
+    Am implementat functiile cerute folosind functii posix(open read, close, lseek)
+    Pe langa aceste functii am implementat structura _so_file care rontine
+    un file descriptor(int), un offser(int), un buffer index care retine
+    pozitia de la care se citeste/scrie in buffer(int), lastOp(int) care 
+    retine care a fost ultima operatie(citire sau scriere), lastRead(int) 
+    care retine cati bytes au fost cititi la ultimul apel de read, mode(int) 
+    care retine modul inc are a fost deschis fisierul(r, r+, w, w+, a, a+), 
+    eof(int)care este flagul pentru ajungerea la end of file, cursorPos(int)
+    care retine pozitia curenta a cursorului, un buffer (char*) in care retin
+    caracterele pe care le voi scrie/citi din fisier si un errFlag.
+
+Implementare:
+    Am implementat functiile legate de fisiere.
+    Nu am reusit sa implementez cazurile de random, de append si cele 
+    ce au legatura cu procese.
+
+Cum se compileaza:
+    Se compileaza biblioteca cu make apoi se apeleaza makefileul de checker
+    cu make -f Makefile.checker
