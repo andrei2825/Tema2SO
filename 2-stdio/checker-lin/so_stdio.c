@@ -6,7 +6,7 @@
 
 #define BUFFERSIZE 4096
 
-// Structura 
+// Structura
 struct _so_file {
 	int fd;
 	int offset;
